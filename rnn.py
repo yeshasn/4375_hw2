@@ -16,6 +16,8 @@ import pickle
 unk = '<UNK>'
 # Consult the PyTorch documentation for information on the functions used below:
 # https://pytorch.org/docs/stable/torch.html
+
+
 class RNN(nn.Module):
     def __init__(self, input_dim, h):  # Add relevant parameters
         super(RNN, self).__init__()
@@ -31,12 +33,16 @@ class RNN(nn.Module):
 
     def forward(self, inputs):
         # [to fill] obtain hidden layer representation (https://pytorch.org/docs/stable/generated/torch.nn.RNN.html)
-        _, hidden = 
+        _, hidden = self.rnn(inputs)
         # [to fill] obtain output layer representations
+        output, _ = self.rnn(inputs)
 
-        # [to fill] sum over output 
+        # [to fill] sum over output
+        sum = torch.sum(output, dim=0)
 
         # [to fill] obtain probability dist.
+        valuesFromLayer = self.W(sum)
+        predicted_vector = self.softmax(valuesFromLayer)
 
         return predicted_vector
 
@@ -50,24 +56,30 @@ def load_data(train_data, val_data):
     tra = []
     val = []
     for elt in training:
-        tra.append((elt["text"].split(),int(elt["stars"]-1)))
+        tra.append((elt["text"].split(), int(elt["stars"]-1)))
     for elt in validation:
-        val.append((elt["text"].split(),int(elt["stars"]-1)))
+        val.append((elt["text"].split(), int(elt["stars"]-1)))
     return tra, val
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("-hd", "--hidden_dim", type=int, required = True, help = "hidden_dim")
-    parser.add_argument("-e", "--epochs", type=int, required = True, help = "num of epochs to train")
-    parser.add_argument("--train_data", required = True, help = "path to training data")
-    parser.add_argument("--val_data", required = True, help = "path to validation data")
-    parser.add_argument("--test_data", default = "to fill", help = "path to test data")
+    parser.add_argument("-hd", "--hidden_dim", type=int,
+                        required=True, help="hidden_dim")
+    parser.add_argument("-e", "--epochs", type=int,
+                        required=True, help="num of epochs to train")
+    parser.add_argument("--train_data", required=True,
+                        help="path to training data")
+    parser.add_argument("--val_data", required=True,
+                        help="path to validation data")
+    parser.add_argument("--test_data", default="to fill",
+                        help="path to test data")
     parser.add_argument('--do_train', action='store_true')
     args = parser.parse_args()
 
     print("========== Loading data ==========")
-    train_data, valid_data = load_data(args.train_data, args.val_data) # X_data is a list of pairs (document, y); y in {0,1,2,3,4}
+    # X_data is a list of pairs (document, y); y in {0,1,2,3,4}
+    train_data, valid_data = load_data(args.train_data, args.val_data)
 
     # Think about the type of function that an RNN describes. To apply it, you will need to convert the text data into vector representations.
     # Further, think about where the vectors will come from. There are 3 reasonable choices:
@@ -105,21 +117,25 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             loss = None
             for example_index in range(minibatch_size):
-                input_words, gold_label = train_data[minibatch_index * minibatch_size + example_index]
+                input_words, gold_label = train_data[minibatch_index *
+                                                     minibatch_size + example_index]
                 input_words = " ".join(input_words)
 
                 # Remove punctuation
-                input_words = input_words.translate(input_words.maketrans("", "", string.punctuation)).split()
+                input_words = input_words.translate(
+                    input_words.maketrans("", "", string.punctuation)).split()
 
                 # Look up word embedding dictionary
-                vectors = [word_embedding[i.lower()] if i.lower() in word_embedding.keys() else word_embedding['unk'] for i in input_words ]
+                vectors = [word_embedding[i.lower()] if i.lower() in word_embedding.keys(
+                ) else word_embedding['unk'] for i in input_words]
 
                 # Transform the input into required shape
                 vectors = torch.tensor(vectors).view(len(vectors), 1, -1)
                 output = model(vectors)
 
                 # Get loss
-                example_loss = model.compute_Loss(output.view(1,-1), torch.tensor([gold_label]))
+                example_loss = model.compute_Loss(
+                    output.view(1, -1), torch.tensor([gold_label]))
 
                 # Get predicted label
                 predicted_label = torch.argmax(output)
@@ -139,9 +155,9 @@ if __name__ == "__main__":
             optimizer.step()
         print(loss_total/loss_count)
         print("Training completed for epoch {}".format(epoch + 1))
-        print("Training accuracy for epoch {}: {}".format(epoch + 1, correct / total))
+        print("Training accuracy for epoch {}: {}".format(
+            epoch + 1, correct / total))
         trainning_accuracy = correct/total
-
 
         model.eval()
         correct = 0
@@ -152,7 +168,8 @@ if __name__ == "__main__":
 
         for input_words, gold_label in tqdm(valid_data):
             input_words = " ".join(input_words)
-            input_words = input_words.translate(input_words.maketrans("", "", string.punctuation)).split()
+            input_words = input_words.translate(
+                input_words.maketrans("", "", string.punctuation)).split()
             vectors = [word_embedding[i.lower()] if i.lower() in word_embedding.keys() else word_embedding['unk'] for i
                        in input_words]
 
@@ -163,11 +180,12 @@ if __name__ == "__main__":
             total += 1
             # print(predicted_label, gold_label)
         print("Validation completed for epoch {}".format(epoch + 1))
-        print("Validation accuracy for epoch {}: {}".format(epoch + 1, correct / total))
+        print("Validation accuracy for epoch {}: {}".format(
+            epoch + 1, correct / total))
         validation_accuracy = correct/total
 
         if validation_accuracy < last_validation_accuracy and trainning_accuracy > last_train_accuracy:
-            stopping_condition=True
+            stopping_condition = True
             print("Training done to avoid overfitting!")
             print("Best validation accuracy is:", last_validation_accuracy)
         else:
@@ -175,8 +193,6 @@ if __name__ == "__main__":
             last_train_accuracy = trainning_accuracy
 
         epoch += 1
-
-
 
     # You may find it beneficial to keep track of training accuracy or training loss;
 
